@@ -42,6 +42,7 @@ export interface AstrologerListItem {
   document2Url: string | null
   rejectionReason: string | null
   verifiedAt: string | null
+  commissionPercentage: number | null
 }
 
 export interface Post {
@@ -75,4 +76,43 @@ export interface ImageKitAuthParams {
   token: string
   expire: number
   signature: string
+}
+
+export type HealthStatus = 'ok' | 'up' | 'degraded' | 'down' | string
+
+export interface CronJobStatus {
+  name: string
+  healthy: boolean
+  lastRunAt: string
+  lastSuccessAt: string | null
+  lastError: string | null
+}
+
+export interface ServerHealthCheck {
+  status: HealthStatus
+  uptimeSeconds: number
+  memoryUsageMb: number
+}
+
+export interface DatabaseHealthCheck {
+  status: HealthStatus
+  latencyMs: number
+  error: string | null
+  logs: string[]
+}
+
+export interface CronHealthCheck {
+  status: HealthStatus
+  jobs: CronJobStatus[]
+  logs: string[]
+}
+
+export interface HealthResponse {
+  status: HealthStatus
+  timestamp: string
+  checks: {
+    server: ServerHealthCheck
+    database: DatabaseHealthCheck
+    cron: CronHealthCheck
+  }
 }

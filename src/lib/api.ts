@@ -2,6 +2,7 @@ import { API_BASE_URL } from './env'
 import { tokenStore } from './token-store'
 import type {
   AstrologerListItem,
+  HealthResponse,
   ImageKitAuthParams,
   PaginationMeta,
   Post,
@@ -104,6 +105,8 @@ export const authApi = {
 export const adminApi = {
   getStats: () => request<Stats>('/admin/stats'),
 
+  getHealth: () => request<HealthResponse>('/admin/health'),
+
   getUploadToken: () => request<ImageKitAuthParams>('/admin/upload-token'),
 
   // ── Users ──────────────────────────────────────────────────────────────
@@ -167,6 +170,12 @@ export const adminApi = {
     request<{ message: string }>(`/admin/astrologers/${id}/verification`, {
       method: 'PATCH',
       body: JSON.stringify({ status, rejectionReason }),
+    }),
+
+  updateCommission: (id: string, commissionPercentage: number) =>
+    request<{ message: string }>(`/admin/astrologers/${id}/commission`, {
+      method: 'PATCH',
+      body: JSON.stringify({ commissionPercentage }),
     }),
 
   // ── Posts ───────────────────────────────────────────────────────────────
