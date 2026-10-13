@@ -10,6 +10,7 @@ import type {
   ImageKitAuthParams,
   PaginationMeta,
   Post,
+  RefundRequest,
   Role,
   Stats,
   User,
@@ -268,6 +269,24 @@ export const adminApi = {
       `/admin/transactions?${qs.toString()}`,
     )
   },
+
+  // ── Refund / Cancellation requests ───────────────────────────────────────
+  listRefundRequests: (filter: 'pending' | 'all' = 'pending') =>
+    request<{ success: boolean; data: { requests: RefundRequest[] } }>(
+      `/admin/cancellation-requests?filter=${filter}`,
+    ),
+
+  approveRefundRequest: (id: string) =>
+    request<{ success: boolean; data: { request: RefundRequest } }>(
+      `/admin/cancellation-requests/${id}/approve`,
+      { method: 'PATCH' },
+    ),
+
+  rejectRefundRequest: (id: string, reason?: string) =>
+    request<{ success: boolean; data: { request: RefundRequest } }>(
+      `/admin/cancellation-requests/${id}/reject`,
+      { method: 'PATCH', body: JSON.stringify({ reason }) },
+    ),
 
   listTransactionEvents: (params: {
     event?: string

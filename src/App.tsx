@@ -10,6 +10,7 @@ import { Consultations } from '@/pages/Consultations'
 import { Earnings } from '@/pages/Earnings'
 import { Transactions } from '@/pages/Transactions'
 import { Categories } from '@/pages/Categories'
+import { RefundRequests } from '@/pages/RefundRequests'
 import { PrivacyPolicy } from '@/pages/PrivacyPolicy'
 import { DeleteAccount } from '@/pages/DeleteAccount'
 
@@ -29,6 +30,7 @@ export default function App() {
             <Route path="/consultations" element={<Consultations />} />
             <Route path="/earnings" element={<Earnings />} />
             <Route path="/transactions" element={<Transactions />} />
+            <Route path="/refund-requests" element={<RefundRequests />} />
             <Route path="/categories" element={<Categories />} />
           </Route>
         </Routes>

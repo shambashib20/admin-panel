@@ -245,3 +245,30 @@ export interface TransactionEvent {
   rawPayload: unknown
   createdAt: string
 }
+
+// ─── Cancellation / Refund Requests ────────────────────────────────────────
+
+export type CancellationRequestStatus =
+  | 'pending'
+  | 'refunded'
+  | 'credited'
+  | 'timing_changed'
+  | 'admin_pending_money'
+  | 'admin_pending_wallet'
+  | 'admin_approved'
+  | 'admin_rejected'
+
+export interface RefundRequest {
+  id: string
+  appointmentId: string
+  userId: string
+  userName: string | null
+  amount: string
+  deductionAmount: number
+  upiId: string | null
+  status: CancellationRequestStatus
+  initiatedBy: 'astrologer' | 'user'
+  expiresAt: string
+  createdAt: string
+  updatedAt: string
+}
