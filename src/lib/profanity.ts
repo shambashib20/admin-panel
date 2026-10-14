@@ -1,61 +1,89 @@
 /**
- * Pure word-list profanity filter — no AI, no network calls.
+ * Profanity filter — powered by leo-profanity (English word list)
+ * plus an extended Hindi / Hinglish word list.
  *
  * Strategy:
- *  1. Normalise leet-speak (3→e, @→a, 0→o, 1→i, $→s, etc.)
- *  2. Match each bad word using a word-boundary-aware regex so "class"
- *     doesn't trip on "ass", etc.
- *  3. Return the matched terms so the UI can surface them.
+ *  1. Pull leo-profanity's maintained English list at module load.
+ *  2. Merge with our Hindi/Hinglish list.
+ *  3. Normalise leet-speak so "f@ck", "sh1t", etc. are caught.
+ *  4. Use word-boundary regex to avoid false positives ("class" ≠ "ass").
+ *  5. Return matched terms so the admin UI can show exactly what was flagged.
+ *
+ * Sync this file with astrobook-backend/src/core/utils/profanity.ts whenever you edit it.
  */
 
-// ─── Word list ────────────────────────────────────────────────────────────────
-// Add or remove words here. Keep them lower-case, no spaces around entries.
-const PROFANITY_LIST: string[] = [
-  // English
-  'fuck', 'fucker', 'fucking', 'fucked', 'fucks',
-  'shit', 'shits', 'shitting', 'shitty',
-  'bitch', 'bitches', 'bitching',
-  'asshole', 'assholes', 'ass',
-  'bastard', 'bastards',
-  'damn', 'damned',
-  'cunt', 'cunts',
-  'dick', 'dicks',
-  'cock', 'cocks',
-  'pussy', 'pussies',
-  'whore', 'whores',
-  'slut', 'sluts',
-  'nigger', 'niggers', 'nigga',
-  'faggot', 'faggots', 'fag',
-  'retard', 'retards', 'retarded',
-  'rape', 'raped', 'rapist',
-  'motherfucker', 'motherfucking',
-  'son of a bitch',
-  // Hindi / Hinglish (romanised)
-  'madarchod', 'maderchod', 'mc',
-  'behenchod', 'bc',
-  'chutiya', 'chutiye', 'chut',
-  'gaandu', 'gandu',
-  'randi', 'randwa',
-  'saala', 'saali',
-  'harami', 'haramzada', 'haramkhor',
-  'bhosdike', 'bhosdi',
-  'loda', 'lode', 'lauda',
-  'jhant', 'jhantu',
-  'kamina', 'kamine',
-  'kutte', 'kutti',
-  'bkl', 'bklol',
-  'mkl',
+// leo-profanity ships no types — minimal inline shim.
+// @ts-expect-error — no type declarations for leo-profanity
+import leoProfanity from 'leo-profanity'
+const getEnglishWords = (): string[] => (leoProfanity as { list: () => string[] }).list()
+
+// ─── Hindi / Hinglish word list ───────────────────────────────────────────────
+
+const HINDI_WORDS: string[] = [
+  // ── Tier-1: most common abuses ──────────────────────────────────────────────
+  'madarchod', 'maderchod', 'madarjaat', 'madarlod', 'maa ka bhosda',
+  'maa ki aankh', 'teri maa', 'teri maa ki', 'maa ki aankh',
+  'behenchod', 'behnchod', 'bhenchod', 'benchod', 'bencho', 'bhen ke laude',
+  'chutiya', 'chutiye', 'chut', 'choot', 'chootiya',
+  'gaandu', 'gandu', 'gaand', 'gand',
+  'bhosdike', 'bhosdi', 'bhosadike', 'bhosdiwale', 'bhosad',
+  'loda', 'lauda', 'lund', 'lavda', 'lodi', 'lun',
+  'randi', 'raand', 'randwe', 'randi ka bacha', 'randi ki aulad',
+  'harami', 'haramzada', 'haramkhor', 'haramjada', 'haramjadi', 'haramkhor',
+
+  // ── Tier-2: strong abuses ────────────────────────────────────────────────────
+  'bhadwa', 'bhadwi', 'bhadwe',
+  'chakka', 'chhakka',
+  'hijra',
+  'jhant', 'jhantu', 'jhantoo',
+  'kamina', 'kamine', 'kamini',
+  'bakchod', 'bakchodi', 'bakchodiya', 'bakchodon',
+  'chodu', 'chod', 'chodna', 'chodoge', 'chodega',
+  'besharam',
+  'kutte', 'kutti', 'kutiya', 'kutta ki aulad', 'kuttiya',
+  'saala', 'saali', 'saale', 'sala', 'sali',
+  'tatti', 'tattu',
+  'ullu', 'ullu ka pattha', 'ullupan',
+  'kameena', 'kameeni',
+
+  // ── Tier-3: chat abbreviations ───────────────────────────────────────────────
+  'mc', 'bc', 'bkl', 'bklol', 'mkl', 'mklc', 'lmc', 'mmc',
+
+  // ── Tier-4: additional slang / regional ─────────────────────────────────────
+  'raand',
+  'lounda', 'laundebaaz', 'laundiya',
+  'goo',
+  'gadha',
+  'suar', 'suwar',
+  'nalayak',
+  'nikamma',
+  'kanjri', 'kanjri ka',
+  'maa chod', 'behen chod', 'baap chod',
+  'land', 'landwa',
+  'phuddu', 'fuddu',
+  'jhandu',
+  'chaman', 'chaman choot',
+  'lafanga',
+  'badmash',
+  'ghatiya',
+  'bhand',
+  'pendu',
+  'lawda',
+  'madarc',
+  'behenc',
+  'bhosdk',
 ]
 
-// ─── Leet-speak normalisation map ────────────────────────────────────────────
-const LEET_MAP: [RegExp, string][] = [
+// ─── Leet-speak normalisation ─────────────────────────────────────────────────
+
+const LEET_MAP: Array<[RegExp, string]> = [
   [/[@4]/g, 'a'],
   [/3/g, 'e'],
   [/[1!|]/g, 'i'],
   [/0/g, 'o'],
   [/[$5]/g, 's'],
   [/7/g, 't'],
-  [/[\/\\]/g, 'l'],
+  [/[/\\]/g, 'l'],
   [/[)(]/g, ''],
 ]
 
@@ -64,17 +92,17 @@ function normalise(text: string): string {
   for (const [pattern, replacement] of LEET_MAP) {
     t = t.replace(pattern, replacement)
   }
-  // collapse repeated characters (fuuuck → fuck)
   t = t.replace(/(.)\1{2,}/g, '$1$1')
   return t
 }
 
-// Pre-compile one regex per term.  For multi-word phrases we strip \b since
-// spaces already delimit them.
-const COMPILED = PROFANITY_LIST.map((term) => {
+// ─── Build combined word list ─────────────────────────────────────────────────
+
+const ALL_WORDS = [...new Set([...getEnglishWords(), ...HINDI_WORDS])]
+
+const COMPILED = ALL_WORDS.map((term) => {
   const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const hasSpace = term.includes(' ')
-  const pattern = hasSpace ? escaped : `\\b${escaped}\\b`
+  const pattern = term.includes(' ') ? escaped : `\\b${escaped}\\b`
   return { term, re: new RegExp(pattern, 'i') }
 })
 
@@ -82,36 +110,19 @@ const COMPILED = PROFANITY_LIST.map((term) => {
 
 export interface ProfanityResult {
   flagged: boolean
-  /** The matched bad words (de-duped). */
+  /** De-duped list of matched bad words — shown in the admin UI. */
   matches: string[]
 }
 
-/**
- * Check a piece of text for profanity.
- * Pass `content` (post body) and optionally `tags` joined as a string.
- */
 export function checkProfanity(text: string): ProfanityResult {
-  if (!text || !text.trim()) return { flagged: false, matches: [] }
+  if (!text?.trim()) return { flagged: false, matches: [] }
 
   const normalised = normalise(text)
   const matches: string[] = []
 
   for (const { term, re } of COMPILED) {
-    if (re.test(normalised)) {
-      matches.push(term)
-    }
+    if (re.test(normalised)) matches.push(term)
   }
 
   return { flagged: matches.length > 0, matches }
-}
-
-/** Convenience boolean — use when you only need pass/fail. */
-export function isFlagged(text: string): boolean {
-  return checkProfanity(text).flagged
-}
-
-/** Check post content + tags together. */
-export function isPostFlagged(content: string, tags: string[]): boolean {
-  const combined = [content, ...tags].join(' ')
-  return isFlagged(combined)
 }
